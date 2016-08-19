@@ -1,20 +1,26 @@
 var express = require('express');
-var exec = require('./exec');
+var exec = require('./exec').exec;
 var app = express();
 app.post("/github/:repo", (req, res) => {
-    var repoPath = "/var/easy-ci/" + req.params['repo'];
+    var sPath = "/var/easy-ci/" + req.params['repo'];
+    var keyPath = require('path').resolve(sPath + "/id_rsa")
+    var repoPath = sPath + "/repo";
     var execOpts = {
-        cwd: repoPath,
         shell: true,
-        stdio: "inherit"
+        stdio: ["inherit", "inherit", "inherit"]
     }
-    exec("ssh-add", [repoPath + "/id_rsa"], execOpts).then(() => {
-        return exec("git", ["pull"], execOpts);
+    execOpts.cwd = repoPath;
+    exec("eval $(ssh-agent) && ssh-add " + keyPath + " && git pull", execOpts).then(() => {
+
     }).then(() => {
-        return exec("start", [], execOpts);
+        var configModule = require.resolve(sPath + "/config.js");
+        console.log(configModule);
+        delete require.cache[configModule];
+        return Promise.resolve(require(configModule)());
     }).then(() => {
         res.send({ status: "ok" })
     }).catch((err) => {
         res.send({ status: "error", "error": err });
     })
 });
+app.listen(process.env.PORT || 7654);

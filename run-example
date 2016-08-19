@@ -1,0 +1,1 @@
+docker build -t arvitaly/easy-ci ./ && docker stop easy-ci && docker rm easy-ci && docker run -v /Users/arvitaly/Documents/easy-ci:/var/easy-ci --name easy-ci --publish=7654:7654 -d arvitaly/easy-ci
