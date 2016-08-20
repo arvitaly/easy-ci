@@ -7,7 +7,7 @@ var check = require('./check-payload');
 
 //Load env variables
 var tmpPath = process.env.TMP || "/tmp";
-var configPath = process.env.CONFIG || "/var/easy-ci/config.js"
+var configPath = process.env.CONFIG || "/etc/easy-ci/config.js"
 
 //Express server
 var app = express();
