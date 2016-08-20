@@ -18,6 +18,7 @@ describe("Easy CI", () => {
             method: "POST",
             body: payload,
             headers: {
+                "Content-type": "application/json",
                 "X-Hub-Signature": sign
             }
         }).then((body) => {

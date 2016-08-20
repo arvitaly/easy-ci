@@ -1,12 +1,17 @@
 var fs = require('fs');
 var express = require('express');
+var bodyParser = require('body-parser');
+
 var pull = require('./pull');
-var app = express();
+var check = require('./check-payload');
+
+//Load env variables
 var tmpPath = process.env.TMP || "/tmp";
 var configPath = process.env.CONFIG || "/var/easy-ci/config.js"
 
-app.post("/github/:repo", (req, res) => {
-    //
+//Express server
+var app = express();
+app.post("/github/:repo", bodyParser.raw({ type: "application/json" }), (req, res) => {
     var confPath = require.resolve(configPath);
     var repoConf;
 
@@ -31,17 +36,29 @@ app.post("/github/:repo", (req, res) => {
             {
                 key: "",
                 path: "",
-                command: ()=>{}
+                secret: "",
+                command: ()=>{}                
             }
         */
+        if (!req.headers['x-hub-signature']) {
+            res.send({ "status": "error", "error": "Not found signature for repo " + req.params.repo });
+            return;
+        }
+        if (!req.body) {
+            res.send({ "status": "error", "error": "Empty body for repo " + req.params.repo });
+            return;
+        }
+        if (!check(req.body, req.headers['x-hub-signature'], repoConf.secret)) {
+            res.send({ "status": "error", "error": "Invalid signature for repo " + req.params.repo });
+            return;
+        }
         if (repoConf.key) {
             return writeKeyToTemp(repoConf.key)
         }
         return null;
     }).then((keyPath) => {
         if (repoConf.path) {
-            var repoPath = repoConf.path;
-            return pull(repoPath, keyPath)
+            return pull(repoConf.path, keyPath)
         }
     }).then(() => {
         if (repoConf.command) {
