@@ -2,10 +2,12 @@ var fs = require('fs');
 var express = require('express');
 var exec = require('./exec').exec;
 var app = express();
+var tmpPath = process.env.TMP || "/tmp";
+var configPath = process.env.CONFIG || "/var/easy-ci/config.js"
 
 app.post("/github/:repo", (req, res) => {
     //
-    var confPath = require.resolve("/var/easy-ci/config.js");
+    var confPath = require.resolve(configPath);
     var repoConf;
     fexists(confPath).then((isExists) => {
         if (!isExists) {
@@ -19,11 +21,11 @@ app.post("/github/:repo", (req, res) => {
             res.send({ "status": "error", "error": "not found repo " + req.params.repo });
             return;
         }
-        /*
+        /* REPO CONFIG INTERFACE
             {
                 key: "",
                 path: "",
-                command: 
+                command: ()=>{}
             }
         */
         if (repoConf.key) {
@@ -53,7 +55,7 @@ app.post("/github/:repo", (req, res) => {
 app.listen(process.env.PORT || 7654);
 
 function writeKeyToTemp(key) {
-    var tmpFile = "/tmp/" + (+new Date) + parseInt((Math.random() * 1000000));
+    var tmpFile = tmpPath + "/" + (+new Date) + parseInt((Math.random() * 1000000));
     return new Promise((resolve, reject) => {
         fs.writeFile(tmpFile, key, (err) => {
             if (err) {
