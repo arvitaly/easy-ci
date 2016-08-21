@@ -8,13 +8,14 @@ var reposConfig = require('./fixtures/config.js');
 
 describe("Easy CI", () => {
     it("push", (done) => {
+        process.env.PORT = 7345
         process.env.CONFIG = path.resolve(__dirname + "/fixtures/config.js")
         mock('./../pull', (repoPath, keyPath) => {
             expect(repoPath).toBe(reposConfig.repos.repo1.path)
-            expect("" + require('fs').readFileSync(keyPath)).toBe(reposConfig.repos.repo1.key)
+            expect(keyPath).toBe(reposConfig.repos.repo1.key)
         })
         require("./../index")
-        fetch("http://127.0.0.1:7654/github/repo1", {
+        fetch("http://127.0.0.1:" + process.env.PORT + "/github/repo1", {
             method: "POST",
             body: payload,
             headers: {

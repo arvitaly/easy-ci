@@ -1,64 +1,62 @@
 var fs = require('fs');
 var express = require('express');
 var bodyParser = require('body-parser');
-
+//Internal modules
 var pull = require('./pull');
 var check = require('./check-payload');
-
+var errors = require('./errors');
 //Load env variables
-var tmpPath = process.env.TMP || "/tmp";
 var configPath = process.env.CONFIG || "/etc/easy-ci/config.js"
-
-//Express server
+//Express server with support only github webhook
 var app = express();
 app.post("/github/:repo", bodyParser.raw({ type: "application/json" }), (req, res) => {
-    var confPath = require.resolve(configPath);
     var repoConf;
-
+    var repoName = req.params['repo'];
+    //create error func by binding response
+    var error = (err) => {
+        return Promise.reject(err)
+    }
+    //resolve config path
+    var confPath = require.resolve(configPath);
+    //check if config file existing
     fexists(confPath).then((isExists) => {
         if (!isExists) {
-            res.send({ "status": "error", "error": "not found easy-ci config" });
-            return;
+            return error(errors.notFoundConfig(confPath));
         }
-
+        //Remove cache for require new config file
         delete require.cache[confPath];
         var conf = require(confPath);
-        if (!conf.repos) {
-            res.send({ "status": "error", "error": "not found repos in config" });
-            return;
+        //Check repository config for errors
+        var configError = getRepoConfigErrors(conf, repoName);
+        if (configError) {
+            return error(configError)
         }
-        repoConf = conf.repos[req.params['repo']]
-        if (!repoConf) {
-            res.send({ "status": "error", "error": "not found repo " + req.params.repo });
-            return;
-        }
-        /* REPO CONFIG INTERFACE
-            {
-                key: "",
-                path: "",
-                secret: "",
-                command: ()=>{}                
-            }
-        */
+        repoConf = conf.repos[repoName];
+        //Check signature
         if (!req.headers['x-hub-signature']) {
-            res.send({ "status": "error", "error": "Not found signature for repo " + req.params.repo });
-            return;
-        }
-        if (!req.body) {
-            res.send({ "status": "error", "error": "Empty body for repo " + req.params.repo });
-            return;
+            return error(errors.notFoundSign(repoName, req.headers))
         }
         if (!check(req.body, req.headers['x-hub-signature'], repoConf.secret)) {
-            res.send({ "status": "error", "error": "Invalid signature for repo " + req.params.repo });
-            return;
+            return error(errors.invalidSign(repoName, req.headers, req.body, repoConf))
         }
-        if (repoConf.key) {
-            return writeKeyToTemp(repoConf.key)
-        }
-        return null;
+        return repoConf.key;
     }).then((keyPath) => {
         if (repoConf.path) {
-            return pull(repoConf.path, keyPath)
+            //Check repository path exists
+            return fexists(repoConf.path).then((isExists) => {
+                if (!isExists) {
+                    return error(errors.notFoundRepoPath(repoName, repoConf, repoConf.path));
+                }
+                if (keyPath) {
+                    return fexists(keyPath).then((isExists) => {
+                        if (!isExists) {
+                            return error(errors.notFoundKeyPath(repoName, repoConf, keyPath));
+                        }
+                    })
+                }
+            }).then(() => {
+                return pull(repoConf.path, keyPath)
+            })
         }
     }).then(() => {
         if (repoConf.command) {
@@ -67,23 +65,15 @@ app.post("/github/:repo", bodyParser.raw({ type: "application/json" }), (req, re
     }).then((result) => {
         res.send({ status: "ok", "result": result })
     }).catch((err) => {
-        res.send({ status: "error", "error": err });
+        console.error(err);
+        if (!err.message) {
+            err = error(errors.unknownError(err))
+        }
+        sendError(res, err);
     })
 });
 app.listen(process.env.PORT || 7654);
 
-function writeKeyToTemp(key) {
-    var tmpFile = tmpPath + "/" + (+new Date) + parseInt((Math.random() * 1000000));
-    return new Promise((resolve, reject) => {
-        fs.writeFile(tmpFile, key, (err) => {
-            if (err) {
-                reject(err);
-                return
-            }
-            resolve(tmpFile);
-        })
-    })
-}
 function fexists(f) {
     return new Promise((resolve) => {
         fs.access(f, fs.F_OK, function (err) {
@@ -94,4 +84,27 @@ function fexists(f) {
             }
         });
     })
+}
+function sendError(res, err) {
+    res.status(500).send({ status: "error", error: err })
+}
+
+/* REPO CONFIG INTERFACE
+    {
+        key: "",
+        path: "",
+        secret: "",
+        command: ()=>{}                
+    }
+*/
+function getRepoConfigErrors(conf, repoName) {
+    if (!conf.repos) {
+        return errors.notFoundReposInConf(conf);
+    }
+    if (!conf.repos[repoName]) {
+        return errors.notFoundRepoInConf(conf, repoName);
+    }
+    if (!conf.repos[repoName].secret) {
+        return errors.notFoundSecretInRepoConf(conf, repoName);
+    }
 }
