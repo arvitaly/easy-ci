@@ -18,8 +18,8 @@ Config can be found by this code:
     module.exports = {`
     `repos: {`
         repo1: {
-            //repository ssh deploy key https://developer.github.com/guides/managing-deploy-keys/
-            key: "-----BEGIN RSA PRIVATE KEY-----\nMIIJKQIBAAKCAgEA0jNVUe+0auOYtiSWUKuRRHHeIBLtle2tscMAHl+MgzIPpApa\n76ul9snUA1H9wUotiserlJ0iLFccnRAj3GTrqYqjR2UST8oKWgVbzeTRbZiVDtPl...",
+            //repository ssh deploy key path https://developer.github.com/guides/managing-deploy-keys/
+            key: "/var/keys/key1",
             //github webhook secret https://developer.github.com/webhooks/securing/#setting-your-secret-token
             secret: secret,
             path: "/var/easy-ci/repo1",
