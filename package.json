@@ -1,7 +1,7 @@
 {
   "name": "easy-ci",
-  "version": "0.0.7",
-  "description": "",
+  "version": "0.0.8",
+  "description": "Very easy continuous integration tool for Github with docker support",
   "main": "index.js",
   "scripts": {
     "start": "node index",
