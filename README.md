@@ -1,4 +1,6 @@
 # EasyCI: very easy continuous integration tool for Github with docker support
+
+[![Greenkeeper badge](https://badges.greenkeeper.io/arvitaly/easy-ci.svg)](https://greenkeeper.io/)
 [![Build Status](https://travis-ci.org/arvitaly/easy-ci.svg?branch=master)](https://travis-ci.org/arvitaly/easy-ci)
 [![npm version](https://badge.fury.io/js/easy-ci.svg)](https://badge.fury.io/js/easy-ci)
 
